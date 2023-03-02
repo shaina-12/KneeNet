@@ -6,7 +6,7 @@ Created on Mon Feb 27 20:22:08 2023
 """
 
 from __future__ import annotations
-__author__: list[str] = ['Anjali Gaur', 'Rahul Sawhney', 'Prof. (Dr.) M. Parthasarathi']
+__author__: list[str] = []
 
 __license__: str = r'''
 MIT License
