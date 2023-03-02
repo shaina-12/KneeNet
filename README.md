@@ -1,7 +1,7 @@
 # KneeNet
 ## Authors:
-### Anjali Gaur
-### Rahul Sawhney
+###
+### 
 ## Submitted To:
 ### Prof. (Dr.) M. Parthasarathi
 ## Guided By:
