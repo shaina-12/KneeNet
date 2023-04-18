@@ -1,5 +1,7 @@
 # KneeNet
 ## Authors:
+### Anjali Gaur
+### Shaina Mehta
 ###
 ### 
 ## Submitted To:
