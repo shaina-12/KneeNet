@@ -361,4 +361,124 @@ class ModelUtils:
   
 ## Driver Code
   
-if
+if __name__ == "__main__":
+    train_data, test_data = MetaData().splitData()
+    max_samples=1157 # since each class has more than 200 images all classes will be trimmed to have 200 images per class
+    min_samples=734
+    column='label'
+    train_df=  MetaData().underSample(train_data, max_samples, min_samples, column)
+
+    # Show Distribution of Data
+
+    print('Showing Class Distribution')
+
+    print('For Training Set')
+    AnalyzeData().dataDistribition(train_data, 'Training Set')
+
+    print('For Test Set')
+    AnalyzeData().dataDistribition(test_data, 'Test Set')
+
+    print('For Balanced Train Set')
+    AnalyzeData().dataDistribition(train_df, 'Balanced Train Set')
+
+    # Train and Validation Transform
+
+    train_transform = A.Compose([
+        A.Resize(width=299, height=299),
+        A.GaussianBlur(blur_limit=(5, 5), sigma_limit=0, p=1.0),
+        A.CLAHE(clip_limit=4.0, tile_grid_size=(9,9), p=1.0),
+        A.CenterCrop(width=280, height=200),
+        A.Resize(width=299, height=299),
+        A.HorizontalFlip(p=0.5),
+        A.Rotate(limit=10, p=0.5),
+        A.Normalize(mean=(0.4671), std=(0.2907)),
+        ToTensorV2()
+    ])
+
+    # Test Transform
+
+    test_transform = A.Compose([
+        A.Resize(width=299, height=299),
+        A.GaussianBlur(blur_limit=(5, 5), sigma_limit=0, p=1.0),
+        A.CLAHE(clip_limit=4.0, tile_grid_size=(9,9), p=1.0),
+        A.CenterCrop(width=280, height=200),
+        A.Resize(width=299, height=299),
+        A.HorizontalFlip(p=0.5),
+        A.Rotate(limit=10, p=0.5),
+        A.Normalize(mean=(0.6085), std=(0.1542)),
+        ToTensorV2()
+    ])
+
+    # Setting Hyper-parameters
+    
+    num_classes = 10
+    num_epochs =20
+    batch_size = 50
+    learning_rate = 0.001
+    
+    # Allocating the GPU and Loading the Model in GPU
+
+    device = ModelUtils().allDevice()
+    model = models.mobilenet_v2(pretrained=True)
+    model.features[0][0] = nn.Conv2d(1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+    model.classifier[1] = nn.Linear(in_features=1280, out_features=4, bias=True)
+    model.to(device)
+
+    # Setting up Optimizers, Learning Rate Scheduler and Loss Function
+
+    optimizer= optim.Adam(model.parameters(),lr = 0.01)
+    #scheduler = lrs.StepLR(optimizer,step_size =7,gamma=0.1,verbose=True)
+    loss_fn = nn.CrossEntropyLoss()
+    kf = StratifiedKFold(n_splits=10, shuffle=False)
+    acc = []
+    wts = []
+
+    x = train_df.iloc[:,0].values
+    y = train_df.iloc[:,1].values
+
+    index = 0
+    for train_idx, val_idx in kf.split(x,y):
+        index += 1
+        print(index, 'fold')
+        x_t, x_v = x[train_idx], x[val_idx]
+        y_t, y_v = y[train_idx], y[val_idx]
+        td = {'file_name':x_t,'label':y_t}
+        vd = {'file_name':x_v,'label':y_v}
+        t_data = pd.DataFrame.from_dict(td)
+        v_data = pd.DataFrame.from_dict(vd)
+        train_image_dataset = KneeXrayData(data=t_data, transform=train_transform)
+        val_image_dataset = KneeXrayData(data=v_data, transform=train_transform)
+        train_image_loader = DataLoader(train_image_dataset, batch_size = 50, shuffle = False)
+        val_image_loader = DataLoader(val_image_dataset, batch_size = 50, shuffle = False)
+        best_acc, best_model = ModelUtils().train(model,train_image_loader,val_image_loader,0.0001,optimizer,loss_fn,100,device)
+        acc.append(best_acc)
+        wts.append(best_model)
+        model.load_state_dict(best_model)    
+
+    for i in range(10):
+        bm = wts[i]
+        print('Model Version'+str(i+1))
+        torch.save(bm,'/content/drive/My Drive/Model Version'+str(i+1)+'.pth')
+        m = models.mobilenet_v2(pretrained=True)
+        m.features[0][0] = nn.Conv2d(1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+        m.classifier[1] = nn.Linear(in_features=1280, out_features=4, bias=True)
+        m.load_state_dict(torch.load('/content/drive/My Drive/Model Version'+str(i+1)+'.pth',map_location=device))
+        m.to(device)
+        m.eval()
+        train_image_dataset = KneeXrayData(data=train_df, transform=train_transform)
+        train_image_loader = DataLoader(train_image_dataset, batch_size = 50, shuffle = False)
+        test_image_dataset = KneeXrayData(data=test_data, transform=test_transform)
+        test_image_loader = DataLoader(test_image_dataset, batch_size = 50, shuffle = False)
+        # Plotting The Confusion Matrix and Classification Report of Train Data
+        preds, actual = ModelUtils().testing(m,train_image_loader,device) 
+        # Confusion Matrix
+        Utils().confusion_matrix(m,actual,preds,device)
+        # Classification Report 
+        Utils().classification_report(m,actual,preds,device)  
+        # Plotting The Confusion Matrix and Classification Report of Test Data
+        preds, actual = ModelUtils().testing(m,test_image_loader,device)
+        # Confusion Matrix
+        Utils().confusion_matrix(m,actual,preds,device)
+        # Classification Report 
+        Utils().classification_report(m,actual,preds,device)
+
