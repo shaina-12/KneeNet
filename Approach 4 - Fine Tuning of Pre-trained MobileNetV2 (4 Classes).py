@@ -341,7 +341,7 @@ class ModelUtils:
  class Utils:
   def confusion_matrix(self, model, actual, preds, device):
     cfm = confusion_matrix(actual, preds)
-    class_names = ['0','1']
+    class_names = ['Grade 0','Grade 1','Grade 2','Grade 3']
     fig, ax = plt.subplots()
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks,class_names)
