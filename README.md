@@ -5,9 +5,9 @@
 ###
 ### 
 ## Submitted To:
-### Prof. (Dr.) M. Parthasarathi
+### Prof. (Dr.) M. Partha Sarathi
 ## Guided By:
-### Prof. (Dr.) M. Parthasarathi
+### Prof. (Dr.) M. Partha Sarathi
 ## About The Project:
 
 
